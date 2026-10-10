@@ -109,6 +109,10 @@ export const hostRequest = async (
       signal: ctrl.signal,
       // 让 Electron 遵循系统代理
       bypassCustomProtocolHandlers: true,
+      // 关键：默认 session 的 cookie jar 若存有该域名的 cookie，Chromium 会**丢弃**插件
+      // 自己设的 Cookie 头、改发 jar 里的那份 —— 插件设的认证信息会被静默忽略。
+      // omit 关掉 cookie store 参与，保证「只发插件显式设置的头」，行为可预期。
+      credentials: "omit",
     });
 
     const headers: Record<string, string> = {};
