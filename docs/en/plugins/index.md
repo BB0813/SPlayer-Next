@@ -85,19 +85,19 @@ Metadata is declared in a leading JSDoc block:
  */
 ```
 
-| Field          | Required | Description                                                                    |
-| -------------- | -------- | ------------------------------------------------------------------------------ |
-| `@name`        |          | Display name, max 24 characters; a compatibility name is generated if omitted  |
-| `@version`     |          | Version; defaults to `0.0.0`                                                   |
-| `@id`          |          | Stable identity, preferably reverse-domain style; derived from name if omitted |
-| `@description` |          | Summary                                                                        |
-| `@author`      |          | Author                                                                         |
-| `@homepage`    |          | Homepage URL                                                                   |
-| `@grant`       |          | Comma-separated `network`, `control`, and `ui` permissions                     |
-| `@type`        |          | `source` (default) or `control`; explicit declaration recommended              |
-| `@apiLevel`    |          | Required host API level; current level is `3`                                  |
-| `@updateUrl`   |          | Update script URL                                                              |
-| `@changelog`   |          | Release notes                                                                  |
+| Field          | Required | Description                                                                               |
+| -------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `@name`        |          | Display name, max 24 characters; a compatibility name is generated if omitted             |
+| `@version`     |          | Version; defaults to `0.0.0`                                                              |
+| `@id`          |          | Stable identity, preferably reverse-domain style; derived from name if omitted            |
+| `@description` |          | Summary                                                                                   |
+| `@author`      |          | Author                                                                                    |
+| `@homepage`    |          | Homepage URL                                                                              |
+| `@grant`       |          | Comma-separated `network`, `control`, `ui`, and `netease` permissions for control plugins |
+| `@type`        |          | `source` (default) or `control`; explicit declaration recommended                         |
+| `@apiLevel`    |          | Required host API level; current level is `4`                                             |
+| `@updateUrl`   |          | Update script URL                                                                         |
+| `@changelog`   |          | Release notes                                                                             |
 
 ::: warning Stable identity
 Native SPlayer plugins should explicitly declare `@name`, `@version`, and `@id`; the plugin market validates them. Identity uses `@id` when present and otherwise derives from the name. Re-importing the same identity replaces the existing plugin. Change the version and code for a release, not the ID or fallback name.
@@ -105,11 +105,12 @@ Native SPlayer plugins should explicitly declare `@name`, `@version`, and `@id`;
 
 ## Permissions
 
-| Permission | Gated API             | Capability        |
-| ---------- | --------------------- | ----------------- |
-| `network`  | `splayer.request`     | HTTP requests     |
-| `control`  | `splayer.player.*`    | Control playback  |
-| `ui`       | `register({ menus })` | Add UI menu items |
+| Permission | Gated API             | Capability                                |
+| ---------- | --------------------- | ----------------------------------------- |
+| `network`  | `splayer.request`     | HTTP requests                             |
+| `control`  | `splayer.player.*`    | Control playback                          |
+| `ui`       | `register({ menus })` | Add UI menu items                         |
+| `netease`  | `splayer.netease.*`   | Request as your signed-in NetEase account |
 
 - Source plugins receive `network` automatically.
 - Control plugins must declare each sensitive capability through `@grant`.
@@ -119,19 +120,20 @@ Native SPlayer plugins should explicitly declare `@name`, `@version`, and `@id`;
 
 Capabilities accumulate: a higher level includes all lower levels.
 
-| Level | New capabilities                                                                          |
-| ----- | ----------------------------------------------------------------------------------------- |
-| `1`   | Source registration, `musicUrl`, `musicSearch`, `musicLyric`, `musicPic`, and common APIs |
-| `2`   | Playback events/control, settings, `onSettingChange`, menus, and `menuClick`              |
-| `3`   | `musicComment`; the host searches for a candidate before requesting comments              |
+| Level | New capabilities                                                                                                                                                |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1`   | Source registration, `musicUrl`, `musicSearch`, `musicLyric`, `musicPic`, and common APIs                                                                       |
+| `2`   | Playback events/control, settings, `onSettingChange`, menus, and `menuClick`                                                                                    |
+| `3`   | `musicComment`; the host searches for a candidate before requesting comments                                                                                    |
+| `4`   | `player.playTrack(track)` to jump to a specific track, and `netease.request(path, data)` to call NetEase APIs as the signed-in account (needs `@grant netease`) |
 
-The current host level is **3**. A plugin requiring a newer level is rejected with `PLUGIN_API_LEVEL_MISMATCH`. Declare the lowest level actually used. Control plugins require at least level 2; comment plugins require level 3.
+The current host level is **4**. A plugin requiring a newer level is rejected with `PLUGIN_API_LEVEL_MISMATCH`. Declare the lowest level actually used. Control plugins require at least level 2; comment plugins require level 3; plugins that jump to a specific track require level 4.
 
 ## Sandbox environment
 
 - No Node built-ins, `require`, `import`, DOM, or Electron API.
 - Available globals include `splayer`, `Buffer`, URL APIs, text encoders, Base64 APIs, promises, microtasks, timers, and a forwarded `console`.
-- Network access is available only through `splayer.request` and only for HTTP(S).
+- Network access is available only through `splayer.request` (HTTP(S)) and `splayer.netease.request` (NetEase APIs as the signed-in account).
 - Top-level synchronous execution has a five-second limit. Put expensive work in asynchronous handlers.
 
 ## Common APIs
@@ -165,6 +167,28 @@ const response = await splayer.request("https://api.example.com/song?id=1", {
   responseType: "json",
 });
 console.log(response.status, response.body);
+```
+
+### `splayer.netease.request(path, data?)`
+
+Makes a request as the user's **signed-in NetEase Cloud Music account** (requires `@grant netease`).
+
+The host sends it with the app's own session, so login cookies, client identity fields (`osver` / `appver` / `versioncode` …) and the system proxy are applied automatically. **The plugin never sees the credentials themselves** — it only borrows the host's identity. That is why this capability has its own permission: `network` is granted automatically to every source plugin, so hanging this off it would let any source plugin act on your account.
+
+| Parameter | Type     | Required | Description                                    |
+| --------- | -------- | -------- | ---------------------------------------------- |
+| `path`    | `string` | ✅       | Must start with `/api/`                        |
+| `data`    | `object` |          | Form fields; `csrf_token` is added by the host |
+
+Only plain `/api/` paths are allowed; the encrypted `weapi` / `eapi` entry points are not exposed.
+
+Resolves to `{ status, body }`. **NetEase always returns HTTP `200` — check `body.code` for the business result.** Fails with `PLUGIN_PERMISSION_DENIED` without the grant, and with `PLUGIN_NOT_LOGGED_IN` when the app itself is not signed in.
+
+```js
+splayer.register({/* ... */});
+
+const { status, body } = await splayer.netease.request("/api/listen/together/status/get");
+if (body.code === 200) splayer.log.info("room:", body.data.roomInfo.roomId);
 ```
 
 ### `splayer.storage`

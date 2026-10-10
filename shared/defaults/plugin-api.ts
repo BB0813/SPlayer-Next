@@ -1,7 +1,7 @@
 import type { PluginsConfig } from "../types/plugin";
 
 /** 当前 Host API 级别；插件 `@apiLevel` 必须 ≤ 此值才加载 */
-export const HOST_API_LEVEL = 3;
+export const HOST_API_LEVEL = 4;
 
 /** 各动作的默认超时（毫秒）。新增动作时在此追加。 */
 export const ACTION_TIMEOUTS = {
@@ -75,6 +75,8 @@ export const PluginErrorCodes = {
   WORKER_CRASHED: "PLUGIN_WORKER_CRASHED",
   /** 权限未授予 */
   PERMISSION_DENIED: "PLUGIN_PERMISSION_DENIED",
+  /** 借宿主账号发请求时，应用本身尚未登录该账号 */
+  NOT_LOGGED_IN: "PLUGIN_NOT_LOGGED_IN",
 } as const;
 
 /** 默认插件配置 */

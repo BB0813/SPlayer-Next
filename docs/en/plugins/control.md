@@ -113,6 +113,7 @@ Declare `@grant control` to use these methods. Without the permission, calls are
 | `player.pause()`           | Pause                                       |
 | `player.next()`            | Next track                                  |
 | `player.prev()`            | Previous track                              |
+| `player.playTrack(track)`  | Play a specific track (requires apiLevel 4) |
 | `player.seek(positionMs)`  | Seek in milliseconds                        |
 | `player.setVolume(volume)` | Set volume from `0` to `1`                  |
 | `player.getPosition()`     | `Promise<number>` with the current position |

@@ -127,6 +127,7 @@ splayer.player.on("lineChange", ({ index }) => {
 | `player.pause()`           | 暂停                                    |
 | `player.next()`            | 下一首                                  |
 | `player.prev()`            | 上一首                                  |
+| `player.playTrack(track)`  | 播放指定曲目(需 apiLevel 4)             |
 | `player.seek(positionMs)`  | 跳转到指定毫秒位置                      |
 | `player.setVolume(volume)` | 设置音量，`volume ∈ [0, 1]`             |
 | `player.getPosition()`     | `Promise<number>`，查询当前进度（毫秒） |

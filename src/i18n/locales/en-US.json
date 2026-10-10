@@ -2028,7 +2028,11 @@
       "grant": {
         "network": { "label": "Network", "desc": "Can make network requests" },
         "control": { "label": "Control", "desc": "Can control the player" },
-        "ui": { "label": "Interface", "desc": "Can extend or modify the app interface" }
+        "ui": { "label": "Interface", "desc": "Can extend or modify the app interface" },
+        "netease": {
+          "label": "NetEase account",
+          "desc": "Can make requests as your signed-in NetEase Cloud Music account"
+        }
       }
     },
     "pluginManager": {

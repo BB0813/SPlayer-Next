@@ -27,6 +27,7 @@ import type {
   SandboxOut,
   SourceCapability,
 } from "@shared/types/plugin";
+import type { Track } from "@shared/types/player";
 import { installLxShim } from "./lx-shim";
 
 const parentPort: {
@@ -276,11 +277,20 @@ const buildSplayer = (record: PluginContextRecord, spec: LoadSpec): HostApi => (
     pause: () => void hostCall(record, "player.pause", []).catch(() => {}),
     next: () => void hostCall(record, "player.next", []).catch(() => {}),
     prev: () => void hostCall(record, "player.prev", []).catch(() => {}),
+    playTrack: (track: Track) => void hostCall(record, "player.playTrack", [track]).catch(() => {}),
     seek: (positionMs: number) =>
       void hostCall(record, "player.seek", [positionMs]).catch(() => {}),
     setVolume: (volume: number) =>
       void hostCall(record, "player.setVolume", [volume]).catch(() => {}),
     getPosition: () => hostCall(record, "player.getPosition", []) as Promise<number>,
+  },
+
+  netease: {
+    request: (path: string, data?: Record<string, unknown>) =>
+      hostCall(record, "netease.request", [path, data ?? {}]) as Promise<{
+        status: number;
+        body: Record<string, unknown>;
+      }>,
   },
 
   onSettingChange: (key: string, handler: (value: unknown) => void) => {

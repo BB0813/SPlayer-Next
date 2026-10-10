@@ -30,8 +30,13 @@ export const PLUGIN_TYPES = ["source", "control"] as const;
 export type PluginType = (typeof PLUGIN_TYPES)[number];
 
 /** 插件可声明的权限清单 */
-export const PLUGIN_GRANTS = ["network", "control", "ui"] as const;
-/** 插件权限：network 联网 / control 控制播放器 / ui 扩展界面 */
+export const PLUGIN_GRANTS = ["network", "control", "ui", "netease"] as const;
+/**
+ * 插件权限：
+ * - `network` 联网 / `control` 控制播放器 / `ui` 扩展界面
+ * - `netease` 以用户已登录的网易云账号身份发起请求。借宿主自己的会话，插件拿不到凭据本身。
+ *   未声明时 `splayer.netease.*` 一律拒绝。
+ */
 export type PluginGrant = (typeof PLUGIN_GRANTS)[number];
 
 /** 控制类插件可订阅的高层播放事件 */
@@ -105,9 +110,30 @@ export interface PluginPlayerApi {
   pause(): void;
   next(): void;
   prev(): void;
+  /** 播放指定曲目（在线曲目须带上完整元数据） */
+  playTrack(track: Track): void;
   seek(positionMs: number): void;
   setVolume(volume: number): void;
   getPosition(): Promise<number>;
+}
+
+/**
+ * 以用户已登录的网易云账号发起请求（需 `@grant netease`）
+ *
+ * 请求由宿主用应用自己的会话代发，因此自动带上登录 cookie 与客户端身份字段
+ * （osver / appver / versioncode …），插件本身拿不到凭据。
+ */
+export interface PluginNeteaseApi {
+  /**
+   * 请求一个网易云 `/api/` 接口
+   * @param path - 以 `/api/` 开头的路径，例如 `/api/listen/together/status/get`
+   * @param data - 表单字段；`csrf_token` 由宿主补齐
+   * @returns HTTP 状态与解析后的响应体；未登录时以 `PLUGIN_NOT_LOGGED_IN` 失败
+   */
+  request(
+    path: string,
+    data?: Record<string, unknown>,
+  ): Promise<{ status: number; body: Record<string, unknown> }>;
 }
 
 /** 插件头部 JSDoc 元数据 */
@@ -372,6 +398,9 @@ export interface HostApi {
   /** 控制类播放面：监听高层事件 + 反向控制 */
   player: PluginPlayerApi;
 
+  /** 以用户已登录的网易云账号发起请求（需 `@grant netease`） */
+  netease: PluginNeteaseApi;
+
   /** 控制类设置变更回调：用户改设置后触发 */
   onSettingChange: (key: string, handler: (value: unknown) => void) => void;
 }
@@ -452,6 +481,7 @@ export type SandboxOut =
 /** worker 调用回宿主的方法名 */
 export type HostCallMethod =
   | "request"
+  | "netease.request"
   | "storage.get"
   | "storage.set"
   | "storage.remove"
@@ -460,6 +490,7 @@ export type HostCallMethod =
   | "player.pause"
   | "player.next"
   | "player.prev"
+  | "player.playTrack"
   | "player.seek"
   | "player.setVolume"
   | "player.getPosition";

@@ -6,10 +6,12 @@
  */
 
 import type { HostCallMethod, HostRequestOptions, PluginGrant } from "@shared/types/plugin";
+import type { Track } from "@shared/types/player";
 import { PluginErrorCodes } from "@shared/defaults/plugin-api";
 import { coreLog } from "@main/utils/logger";
 import { pluginHost } from "./host-process";
 import { hostRequest } from "./net";
+import { pluginNeteaseRequest } from "./neteaseProxy";
 import {
   pluginStorageGet,
   pluginStorageKeys,
@@ -39,10 +41,23 @@ export const dispatchHostCall = async (
         code: PluginErrorCodes.PERMISSION_DENIED,
       });
     }
+    // 借用户账号发请求是敏感能力，单独授权；未声明时一律拒绝
+    if (method.startsWith("netease.") && !grant.includes("netease")) {
+      coreLog.warn(`[plugin:${pluginId}] 缺少 "netease" 权限，拒绝调用 ${method}`);
+      throw Object.assign(new Error(`plugin "${pluginId}" lacks "netease" grant`), {
+        code: PluginErrorCodes.PERMISSION_DENIED,
+      });
+    }
     let data: unknown;
     switch (method) {
       case "request":
         data = await hostRequest(args[0] as string, (args[1] ?? {}) as HostRequestOptions);
+        break;
+      case "netease.request":
+        data = await pluginNeteaseRequest(
+          args[0] as string,
+          (args[1] ?? {}) as Record<string, unknown>,
+        );
         break;
       case "storage.get":
         data = pluginStorageGet(pluginId, args[0] as string);
@@ -74,6 +89,15 @@ export const dispatchHostCall = async (
         playerControl.prev();
         data = undefined;
         break;
+      case "player.playTrack": {
+        const track = args[0] as Track | undefined;
+        // 无 id 的目标无法解析音源，直接忽略（与其它控制方法的即发即忘一致）
+        if (track && typeof track === "object" && typeof track.id === "string") {
+          playerControl.playTrack(track);
+        }
+        data = undefined;
+        break;
+      }
       case "player.seek": {
         const positionMs = Number(args[0]);
         // 插件侧即发即忘：吞掉引擎 rejection，不阻塞 hostCall 返回

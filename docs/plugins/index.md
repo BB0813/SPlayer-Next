@@ -103,19 +103,19 @@ SPlayer-Next 内置一套插件系统，允许用第三方 JavaScript 扩展应�
  */
 ```
 
-| 字段           | 必填 | 说明                                                                                                                         |
-| -------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `@name`        |      | 插件展示名（最长 24 字符）；缺省时使用脚本内容生成的兼容名称                                                                 |
-| `@version`     |      | 版本号；缺省为 `0.0.0`                                                                                                       |
-| `@id`          |      | 插件身份标识（建议反向域名式，如 `you.my-plugin`）；不写则由名称推导                                                         |
-| `@description` |      | 简介                                                                                                                         |
-| `@author`      |      | 作者                                                                                                                         |
-| `@homepage`    |      | 主页 URL                                                                                                                     |
-| `@grant`       |      | 控制插件声明权限：`network`（联网）/ `control`（控制播放器）/ `ui`（扩展界面，如菜单项），逗号分隔；音源插件自动获 `network` |
-| `@type`        |      | `source`（音源，默认）或 `control`（控制）；**建议显式声明**，决定插件类型与权限默认                                         |
-| `@apiLevel`    |      | 声明兼容的 [API 级别与变更记录](#api-级别与变更记录)，当前宿主为 `3`；具体能力所需级别以该表为准                             |
-| `@updateUrl`   |      | 更新检查地址，详见 [插件更新](/plugins/update)                                                                               |
-| `@changelog`   |      | 更新说明，详见 [插件更新](/plugins/update)                                                                                   |
+| 字段           | 必填 | 说明                                                                                                                                                              |
+| -------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@name`        |      | 插件展示名（最长 24 字符）；缺省时使用脚本内容生成的兼容名称                                                                                                      |
+| `@version`     |      | 版本号；缺省为 `0.0.0`                                                                                                                                            |
+| `@id`          |      | 插件身份标识（建议反向域名式，如 `you.my-plugin`）；不写则由名称推导                                                                                              |
+| `@description` |      | 简介                                                                                                                                                              |
+| `@author`      |      | 作者                                                                                                                                                              |
+| `@homepage`    |      | 主页 URL                                                                                                                                                          |
+| `@grant`       |      | 控制插件声明权限：`network`（联网）/ `control`（控制播放器）/ `ui`（扩展界面，如菜单项）/ `netease`（以你的网易云账号发请求），逗号分隔；音源插件自动获 `network` |
+| `@type`        |      | `source`（音源，默认）或 `control`（控制）；**建议显式声明**，决定插件类型与权限默认                                                                              |
+| `@apiLevel`    |      | 声明兼容的 [API 级别与变更记录](#api-级别与变更记录)，当前宿主为 `4`；具体能力所需级别以该表为准                                                                  |
+| `@updateUrl`   |      | 更新检查地址，详见 [插件更新](/plugins/update)                                                                                                                    |
+| `@changelog`   |      | 更新说明，详见 [插件更新](/plugins/update)                                                                                                                        |
 
 ::: warning
 为了获得稳定的展示与更新行为，原生 SPlayer 插件应显式声明 `@name`、`@version` 和 `@id`，插件市场也会校验这些字段。插件**身份 ID** 优先取 `@id`（作者声明，跨版本或改名都不变）；未声明时由名称推导（纯非 ASCII 名会退化为名称哈希以避免冲突）。ID 与源码内容无关，因此**重新导入同一身份的脚本会原地替换**。发布新版时只改 `@version` 与脚本内容，别动 `@id`（未声明 ID 时也别动 `@name`），详见 [插件更新](/plugins/update)。
@@ -125,11 +125,12 @@ SPlayer-Next 内置一套插件系统，允许用第三方 JavaScript 扩展应�
 
 宿主按权限放行插件的敏感能力：
 
-| 权限      | 门控的 API            | 说明                   |
-| --------- | --------------------- | ---------------------- |
-| `network` | `splayer.request`     | 发起网络请求           |
-| `control` | `splayer.player.*`    | 反向控制播放器         |
-| `ui`      | `register({ menus })` | 向歌曲菜单等界面添加项 |
+| 权限      | 门控的 API            | 说明                           |
+| --------- | --------------------- | ------------------------------ |
+| `network` | `splayer.request`     | 发起网络请求                   |
+| `netease` | `splayer.netease.*`   | 以你已登录的网易云账号发起请求 |
+| `control` | `splayer.player.*`    | 反向控制播放器                 |
+| `ui`      | `register({ menus })` | 向歌曲菜单等界面添加项         |
 
 - **音源插件**（`@type source`，含缺省）**自动获得 `network`**，无需声明——联网解析 URL 是其本职。
 - **控制插件**（`@type control`）要联网（如把当前曲目/歌词推给外部服务）必须声明 `@grant network`；要反向控制播放器必须声明 `@grant control`；要向歌曲菜单添加菜单项必须声明 `@grant ui`（详见 [控制插件 · 菜单扩展](/plugins/control#菜单扩展)）。
@@ -139,16 +140,17 @@ SPlayer-Next 内置一套插件系统，允许用第三方 JavaScript 扩展应�
 
 `@apiLevel` 声明插件需要的宿主能力级别。能力是**累加**的：高级别包含低级别的全部能力，新增能力会提升级别。这里是插件 API 级别的唯一变更记录；其它页面只说明具体能力要求的最低级别。
 
-| 级别 | 相对上一等级新增的能力                                                                                                                                                                  | 用到这些能力时                                  |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `1`  | 基础音源能力：`register({ sources })`、`musicUrl` 处理器；元数据兜底处理器：`musicSearch` / `musicLyric` / `musicPic`；通用 API：`request` / `storage` / `log` / `getSetting` / `utils` | 播放地址、歌词、封面插件声明 `@apiLevel 1` 即可 |
-| `2`  | 控制能力：`register({ events, controls, settings })`、`splayer.player` 事件订阅与反向控制、`onSettingChange`；界面能力：`register({ menus })`、`menuClick` 处理器（需 `@grant ui`）     | 控制插件或菜单扩展声明 `@apiLevel 2`            |
-| `3`  | 评论能力：`musicComment` 处理器。宿主先用 `musicSearch` 匹配曲目，再向声明了 `musicComment` 的源请求热门 / 最新评论                                                                     | 评论插件能力声明 `@apiLevel 3`                  |
+| 级别 | 相对上一等级新增的能力                                                                                                                                                                  | 用到这些能力时                                             |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `1`  | 基础音源能力：`register({ sources })`、`musicUrl` 处理器；元数据兜底处理器：`musicSearch` / `musicLyric` / `musicPic`；通用 API：`request` / `storage` / `log` / `getSetting` / `utils` | 播放地址、歌词、封面插件声明 `@apiLevel 1` 即可            |
+| `2`  | 控制能力：`register({ events, controls, settings })`、`splayer.player` 事件订阅与反向控制、`onSettingChange`；界面能力：`register({ menus })`、`menuClick` 处理器（需 `@grant ui`）     | 控制插件或菜单扩展声明 `@apiLevel 2`                       |
+| `3`  | 评论能力：`musicComment` 处理器。宿主先用 `musicSearch` 匹配曲目，再向声明了 `musicComment` 的源请求热门 / 最新评论                                                                     | 评论插件能力声明 `@apiLevel 3`                             |
+| `4`  | 指定曲目播放：`splayer.player.playTrack(track)`，可跳到任意曲目而不只是上一首 / 下一首；账号代发：`splayer.netease.request(path, data)`（需 `@grant netease`）                          | 需要跳到指定曲目或借用网易云登录态的插件声明 `@apiLevel 4` |
 
-当前宿主级别为 **3**。规则：
+当前宿主级别为 **4**。规则：
 
 - 声明值**必须 ≤ 当前宿主级别**，否则拒绝加载并报 `PLUGIN_API_LEVEL_MISMATCH`（需等应用升级）；
-- 声明你实际用到的**最低**级别即可——只做播放地址 / 歌词 / 封面写 `1`，用到任何控制能力写 `2`，用到评论能力写 `3`；
+- 声明你实际用到的**最低**级别即可——只做播放地址 / 歌词 / 封面写 `1`，用到任何控制能力写 `2`，用到评论能力写 `3`，要用 `player.playTrack` 跳到指定曲目写 `4`；
 - 控制插件（`@type control`）必须声明 `2`，否则控制能力在运行时不可用。
 
 ::: tip
@@ -211,6 +213,28 @@ const resp = await splayer.request("https://api.example.com/song?id=1", {
   responseType: "json",
 });
 console.log(resp.status, resp.body);
+```
+
+### `splayer.netease.request(path, data?)`
+
+以**用户已登录的网易云账号**发起请求（需 `@grant netease`）。
+
+请求由宿主用应用自己的会话代发，因此自动带上登录 cookie、客户端身份字段（`osver` / `appver` / `versioncode` …）与系统代理。**插件拿不到凭据本身**，只能借宿主的名义发请求——这也是它单独占一个权限的原因：`network` 对所有音源插件自动授予，如果这个能力挂在它下面，等于任何音源插件都能替你操作账号。
+
+| 参数   | 类型     | 必填 | 说明                              |
+| ------ | -------- | ---- | --------------------------------- |
+| `path` | `string` | ✅   | 以 `/api/` 开头的路径             |
+| `data` | `object` |      | 表单字段；`csrf_token` 由宿主补齐 |
+
+只放行明文 `/api/` 路径，`weapi` / `eapi` 等加密入口不开放。
+
+返回 `Promise<{ status, body }>`，`body` 为解析后的响应体。**网易云的 HTTP 状态码恒为 `200`，业务结果要看 `body.code`**。未声明权限时以 `PLUGIN_PERMISSION_DENIED` 失败，应用本身未登录网易云时以 `PLUGIN_NOT_LOGGED_IN` 失败。
+
+```js
+splayer.register({/* ... */});
+
+const { status, body } = await splayer.netease.request("/api/listen/together/status/get");
+if (body.code === 200) splayer.log.info("房间：", body.data.roomInfo.roomId);
 ```
 
 ### `splayer.storage`

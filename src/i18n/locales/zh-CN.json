@@ -2016,7 +2016,8 @@
       "grant": {
         "network": { "label": "联网", "desc": "插件可发起网络请求" },
         "control": { "label": "控制", "desc": "插件可控制播放器" },
-        "ui": { "label": "界面", "desc": "插件可扩展或修改应用界面" }
+        "ui": { "label": "界面", "desc": "插件可扩展或修改应用界面" },
+        "netease": { "label": "网易云账号", "desc": "插件可以你已登录的网易云账号发起请求" }
       }
     },
     "pluginManager": {
